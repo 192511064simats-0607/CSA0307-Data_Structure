@@ -1,0 +1,419 @@
+// ============================================================
+// EMERGENCY PATIENT MANAGEMENT SYSTEM
+// DASHBOARD MODULE
+// ============================================================
+
+// Dashboard state
+let dashboardData = {
+    totalPatients: 0,
+    waitingPatients: 0,
+    criticalPatients: 0,
+    severePatients: 0,
+    moderatePatients: 0,
+    mildPatients: 0,
+    treatedPatients: 0
+};
+
+// ------------------------------------------------------------
+// Get Patient Data
+// ------------------------------------------------------------
+
+function getDashboardPatients() {
+    try {
+        const data = localStorage.getItem("emergencyPatients");
+        return data ? JSON.parse(data) : [];
+    } catch (error) {
+        console.error("Unable to load patient data:", error);
+        return [];
+    }
+}
+
+function getDashboardHistory() {
+    try {
+        const data = localStorage.getItem("treatmentHistory");
+        return data ? JSON.parse(data) : [];
+    } catch (error) {
+        console.error("Unable to load treatment history:", error);
+        return [];
+    }
+}
+
+// ------------------------------------------------------------
+// Calculate Dashboard Statistics
+// ------------------------------------------------------------
+
+function calculateDashboardStatistics() {
+
+    const patients = getDashboardPatients();
+    const history = getDashboardHistory();
+
+    dashboardData.totalPatients =
+        patients.length + history.length;
+
+    dashboardData.waitingPatients =
+        patients.length;
+
+    dashboardData.treatedPatients =
+        history.length;
+
+    dashboardData.criticalPatients =
+        patients.filter(
+            p => p.severity === "Critical"
+        ).length;
+
+    dashboardData.severePatients =
+        patients.filter(
+            p => p.severity === "Severe"
+        ).length;
+
+    dashboardData.moderatePatients =
+        patients.filter(
+            p => p.severity === "Moderate"
+        ).length;
+
+    dashboardData.mildPatients =
+        patients.filter(
+            p => p.severity === "Mild"
+        ).length;
+
+    return dashboardData;
+}
+
+// ------------------------------------------------------------
+// Update Main Dashboard Cards
+// ------------------------------------------------------------
+
+function updateDashboardCards() {
+
+    const data = calculateDashboardStatistics();
+
+    updateElement(
+        "totalPatients",
+        data.totalPatients
+    );
+
+    updateElement(
+        "waitingPatients",
+        data.waitingPatients
+    );
+
+    updateElement(
+        "criticalPatients",
+        data.criticalPatients
+    );
+
+    updateElement(
+        "treatedPatients",
+        data.treatedPatients
+    );
+}
+
+// ------------------------------------------------------------
+// Helper Function
+// ------------------------------------------------------------
+
+function updateElement(id, value) {
+
+    const element = document.getElementById(id);
+
+    if (element) {
+        element.textContent = value;
+    }
+}
+
+// ------------------------------------------------------------
+// Display Next Patient
+// ------------------------------------------------------------
+
+function displayNextPatient() {
+
+    const patients = getDashboardPatients();
+
+    const container =
+        document.getElementById("nextPatient");
+
+    if (!container) return;
+
+    if (patients.length === 0) {
+
+        container.innerHTML = `
+            <div class="empty-next-patient">
+                <h3>No Patients Waiting</h3>
+                <p>The emergency queue is currently empty.</p>
+            </div>
+        `;
+
+        return;
+    }
+
+    // Sort by priority and arrival order
+    patients.sort((a, b) => {
+
+        if (a.priority !== b.priority) {
+            return a.priority - b.priority;
+        }
+
+        return a.arrivalOrder - b.arrivalOrder;
+    });
+
+    const patient = patients[0];
+
+    container.innerHTML = `
+        <div class="next-patient-card">
+
+            <h3>Next Patient</h3>
+
+            <div class="patient-details">
+
+                <p>
+                    <strong>Patient ID:</strong>
+                    ${patient.id}
+                </p>
+
+                <p>
+                    <strong>Name:</strong>
+                    ${patient.name}
+                </p>
+
+                <p>
+                    <strong>Severity:</strong>
+                    ${patient.severity}
+                </p>
+
+                <p>
+                    <strong>Priority:</strong>
+                    ${patient.priority}
+                </p>
+
+                <p>
+                    <strong>Doctor:</strong>
+                    ${patient.doctor}
+                </p>
+
+                <p>
+                    <strong>Arrival Order:</strong>
+                    ${patient.arrivalOrder}
+                </p>
+
+            </div>
+
+        </div>
+    `;
+}
+
+// ------------------------------------------------------------
+// Display Queue Preview
+// ------------------------------------------------------------
+
+function displayQueuePreview() {
+
+    const patients = getDashboardPatients();
+
+    const container =
+        document.getElementById("queuePreview");
+
+    if (!container) return;
+
+    patients.sort((a, b) => {
+
+        if (a.priority !== b.priority) {
+            return a.priority - b.priority;
+        }
+
+        return a.arrivalOrder - b.arrivalOrder;
+    });
+
+    if (patients.length === 0) {
+
+        container.innerHTML = `
+            <p class="empty-message">
+                No patients are currently waiting.
+            </p>
+        `;
+
+        return;
+    }
+
+    container.innerHTML = patients
+        .slice(0, 5)
+        .map((patient, index) => `
+            <div class="queue-preview-item">
+
+                <span class="queue-position">
+                    ${index + 1}
+                </span>
+
+                <div class="patient-info">
+
+                    <strong>
+                        ${patient.name}
+                    </strong>
+
+                    <small>
+                        ${patient.id}
+                    </small>
+
+                </div>
+
+                <span class="severity">
+                    ${patient.severity}
+                </span>
+
+                <span class="priority">
+                    P${patient.priority}
+                </span>
+
+            </div>
+        `)
+        .join("");
+}
+
+// ------------------------------------------------------------
+// Severity Distribution
+// ------------------------------------------------------------
+
+function displaySeverityStatistics() {
+
+    const data =
+        calculateDashboardStatistics();
+
+    updateElement(
+        "criticalCount",
+        data.criticalPatients
+    );
+
+    updateElement(
+        "severeCount",
+        data.severePatients
+    );
+
+    updateElement(
+        "moderateCount",
+        data.moderatePatients
+    );
+
+    updateElement(
+        "mildCount",
+        data.mildPatients
+    );
+
+    const total =
+        data.waitingPatients || 1;
+
+    updateProgress(
+        "criticalBar",
+        data.criticalPatients,
+        total
+    );
+
+    updateProgress(
+        "severeBar",
+        data.severePatients,
+        total
+    );
+
+    updateProgress(
+        "moderateBar",
+        data.moderatePatients,
+        total
+    );
+
+    updateProgress(
+        "mildBar",
+        data.mildPatients,
+        total
+    );
+}
+
+// ------------------------------------------------------------
+// Progress Bar
+// ------------------------------------------------------------
+
+function updateProgress(id, value, total) {
+
+    const element =
+        document.getElementById(id);
+
+    if (!element) return;
+
+    const percentage =
+        (value / total) * 100;
+
+    element.style.width =
+        `${percentage}%`;
+}
+
+// ------------------------------------------------------------
+// Refresh Dashboard
+// ------------------------------------------------------------
+
+function refreshDashboard() {
+
+    calculateDashboardStatistics();
+
+    updateDashboardCards();
+
+    displayNextPatient();
+
+    displayQueuePreview();
+
+    displaySeverityStatistics();
+}
+
+// ------------------------------------------------------------
+// Dashboard Initialization
+// ------------------------------------------------------------
+
+function initializeDashboard() {
+
+    console.log(
+        "Emergency Patient Management System Dashboard Loaded"
+    );
+
+    refreshDashboard();
+}
+
+// ------------------------------------------------------------
+// Refresh When Page Loads
+// ------------------------------------------------------------
+
+document.addEventListener(
+    "DOMContentLoaded",
+    initializeDashboard
+);
+
+// ------------------------------------------------------------
+// Refresh Dashboard After Storage Changes
+// ------------------------------------------------------------
+
+window.addEventListener(
+    "storage",
+    function () {
+        refreshDashboard();
+    }
+);
+
+// ------------------------------------------------------------
+// Export Dashboard Functions
+// ------------------------------------------------------------
+
+window.dashboard = {
+
+    refresh: refreshDashboard,
+
+    updateCards:
+        updateDashboardCards,
+
+    showNextPatient:
+        displayNextPatient,
+
+    showQueue:
+        displayQueuePreview,
+
+    showStatistics:
+        displaySeverityStatistics,
+
+    getStatistics:
+        calculateDashboardStatistics
+
+};
